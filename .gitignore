@@ -1,0 +1,29 @@
+# General
+.DS_Store
+Thumbs.db
+
+# Node / JS
+node_modules/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Go
+bin/
+*.exe
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.crash
+.terraform/
+.terraform.lock.hcl
+
+# IDE
+.vscode/
+.idea/
+*.iml
