@@ -1,0 +1,66 @@
+{
+  "name": "ServiceNow Keep-Alive Survey",
+  "description": "Survey for ServiceNow instance keep-alive job",
+  "spec": [
+    {
+      "question_name": "ServiceNow Instance URL",
+      "question_description": "Full URL of your ServiceNow instance (e.g., https://dev12345.service-now.com)",
+      "required": true,
+      "type": "text",
+      "variable": "snow_instance_url",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "ServiceNow Username",
+      "question_description": "Username for ServiceNow authentication",
+      "required": true,
+      "type": "text",
+      "variable": "snow_user",
+      "min": 0,
+      "max": 256,
+      "default": "admin",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "ServiceNow Password",
+      "question_description": "Password for ServiceNow authentication",
+      "required": true,
+      "type": "password",
+      "variable": "snow_pass",
+      "min": 0,
+      "max": 256,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "Configuration Item System ID",
+      "question_description": "The sys_id of the CI to update for keep-alive",
+      "required": true,
+      "type": "text",
+      "variable": "ci_number",
+      "min": 32,
+      "max": 32,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "Validate SSL Certificates",
+      "question_description": "Should SSL certificates be validated?",
+      "required": false,
+      "type": "multiplechoice",
+      "variable": "validate_ssl",
+      "min": null,
+      "max": null,
+      "default": "true",
+      "choices": "true\nfalse",
+      "new_question": true
+    }
+  ]
+}

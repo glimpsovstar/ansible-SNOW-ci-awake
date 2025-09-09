@@ -1,0 +1,110 @@
+---
+- name: Keep ServiceNow Instance Alive
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    # AAP Survey Variables / Extra Vars
+    snow_instance: "{{ snow_instance_url | default(lookup('env', 'SNOW_INSTANCE')) }}"
+    snow_username: "{{ snow_user | default(lookup('env', 'SNOW_USER')) }}"
+    snow_password: "{{ snow_pass | default(lookup('env', 'SNOW_PASSWORD')) }}"
+    ci_sys_id: "{{ ci_number | default(lookup('env', 'CI_SYS_ID')) }}"
+    
+    # AAP specific settings
+    aap_job_id: "{{ tower_job_id | default('manual_run') }}"
+    aap_job_template: "{{ tower_job_template_name | default('snow_keep_alive') }}"
+    validate_ssl_certs: "{{ validate_ssl | default(true) }}"
+    
+  tasks:
+    - name: Log job execution start
+      ansible.builtin.debug:
+        msg: 
+          - "=========================================="
+          - "ServiceNow Keep-Alive Job Started"
+          - "AAP Job ID: {{ aap_job_id }}"
+          - "Job Template: {{ aap_job_template }}"
+          - "Target Instance: {{ snow_instance }}"
+          - "=========================================="
+
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - snow_instance is defined and snow_instance != ''
+          - snow_username is defined and snow_username != ''
+          - snow_password is defined and snow_password != ''
+          - ci_sys_id is defined and ci_sys_id != ''
+        fail_msg: "Required variables are not defined. Please configure survey variables or credentials in AAP"
+        success_msg: "All required variables are validated"
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        current_timestamp: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+        update_message: "AAP Keep-Alive Update | Job: {{ aap_job_id }} | Time: {{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+
+    - name: Test ServiceNow connectivity
+      ansible.builtin.uri:
+        url: "{{ snow_instance }}/api/now/table/cmdb_ci/{{ ci_sys_id }}"
+        method: GET
+        user: "{{ snow_username }}"
+        password: "{{ snow_password }}"
+        force_basic_auth: true
+        headers:
+          Accept: "application/json"
+        status_code:
+          - 200
+        validate_certs: "{{ validate_ssl_certs }}"
+      register: ci_check
+      failed_when: false
+
+    - name: Fail if CI not found
+      ansible.builtin.fail:
+        msg: "CI with sys_id '{{ ci_sys_id }}' not found or not accessible"
+      when: ci_check.status != 200
+
+    - name: Update CI to prevent hibernation
+      ansible.builtin.uri:
+        url: "{{ snow_instance }}/api/now/table/cmdb_ci/{{ ci_sys_id }}"
+        method: PATCH
+        user: "{{ snow_username }}"
+        password: "{{ snow_password }}"
+        force_basic_auth: true
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+        body_format: json
+        body:
+          comments: "{{ update_message }}"
+          u_last_keep_alive: "{{ current_timestamp }}"
+        status_code:
+          - 200
+          - 201
+        validate_certs: "{{ validate_ssl_certs }}"
+      register: ci_update_result
+      retries: 3
+      delay: 10
+      until: ci_update_result.status in [200, 201]
+
+    - name: Parse response
+      ansible.builtin.set_fact:
+        ci_info: "{{ ci_update_result.json.result }}"
+      when: ci_update_result.status in [200, 201]
+
+    - name: Display update result
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "✅ SUCCESS: CI Updated Successfully"
+          - "CI Name: {{ ci_info.name | default('N/A') }}"
+          - "CI Number: {{ ci_info.asset_tag | default(ci_info.sys_id) }}"
+          - "Update Time: {{ current_timestamp }}"
+          - "Response Status: {{ ci_update_result.status }}"
+          - "=========================================="
+      when: ci_update_result.status in [200, 201]
+
+    - name: Set job statistics for AAP
+      ansible.builtin.set_stats:
+        data:
+          snow_instance_kept_alive: true
+          last_update_timestamp: "{{ current_timestamp }}"
+          ci_updated: "{{ ci_sys_id }}"
+      when: ci_update_result.status in [200, 201]
