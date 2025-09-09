@@ -1,6 +1,4 @@
 ---
-collections:
-  - name: ansible.builtin
-    version: ">=2.14.0"
-  - name: servicenow.servicenow
-    version: ">=2.3.0"
+# No external collections required
+# This playbook uses only ansible.builtin modules which are part of ansible-core
+collections: []
